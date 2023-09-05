@@ -1,0 +1,12 @@
+/home/fank/Documents/rust/serial-cli/target/debug/deps/bitflags-439b456cf99ee8c2.rmeta: /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/lib.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/parser.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/traits.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/public.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/internal.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/external.rs
+
+/home/fank/Documents/rust/serial-cli/target/debug/deps/libbitflags-439b456cf99ee8c2.rlib: /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/lib.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/parser.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/traits.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/public.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/internal.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/external.rs
+
+/home/fank/Documents/rust/serial-cli/target/debug/deps/bitflags-439b456cf99ee8c2.d: /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/lib.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/parser.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/traits.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/public.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/internal.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/external.rs
+
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/lib.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/parser.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/traits.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/public.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/internal.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/bitflags-2.0.2/src/external.rs:

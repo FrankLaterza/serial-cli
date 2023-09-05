@@ -1,0 +1,12 @@
+/home/fank/Documents/rust/serial-cli/target/debug/deps/serialport-db9314b5b24502cb.rmeta: /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/lib.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/mod.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/enumerate.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/error.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/ioctl.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/poll.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/termios.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/tty.rs
+
+/home/fank/Documents/rust/serial-cli/target/debug/deps/serialport-db9314b5b24502cb.d: /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/lib.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/mod.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/enumerate.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/error.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/ioctl.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/poll.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/termios.rs /home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/tty.rs
+
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/lib.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/mod.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/enumerate.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/error.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/ioctl.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/poll.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/termios.rs:
+/home/fank/.cargo/registry/src/index.crates.io-6f17d22bba15001f/serialport-4.2.2/src/posix/tty.rs:

@@ -1,0 +1,8 @@
+{
+    "start": "A",
+    "body": [
+        {"data_type": "float", "count": 24},
+        {"data_type": "int", "count": 24}
+    ],
+    "end": "Z"
+}
