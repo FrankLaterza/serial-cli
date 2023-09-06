@@ -1,8 +1,6 @@
-use crossterm::event::KeyEventState;
-use crossterm::ExecutableCommand;
 use crossterm::{
-    event::{self, KeyCode, KeyEvent, KeyEventKind},
-    terminal::{self, ClearType},
+    event::{self, KeyCode},
+    terminal::{self},
 };
 use serde::{Deserialize, Serialize};
 use std::fs::File;
@@ -15,6 +13,7 @@ use std::{io, thread};
 
 #[derive(Serialize, Deserialize)]
 struct Config {
+    baud: u32,
     start: char,
     body: Vec<Types>,
     end: char,
@@ -41,28 +40,63 @@ fn main() {
     let config: Config = serde_json::from_str(&config_data).expect("Error loading config.json");
 
     println!("Config loaded");
-
     // kill thread
-    // Create an Arc<AtomicBool> to signal termination
     let terminate_flag = Arc::new(AtomicBool::new(false));
 
     // Clone the Arc for the threads
     let thread1_terminate_flag = Arc::clone(&terminate_flag);
     let thread2_terminate_flag = Arc::clone(&terminate_flag);
 
-    let mut input = String::new();
-
     // Create mutble input buf
     let shared_input = Arc::new(Mutex::new(String::new()));
     let thread1 = Arc::clone(&shared_input);
     let thread2 = Arc::clone(&shared_input);
 
-    // Open the first serialport available.
-    let port_name = &serialport::available_ports().expect("No serial port")[0].port_name;
-    let mut port = serialport::new(port_name, 9600)
+    // Get available ports
+    let ports = serialport::available_ports().expect("No ports found!");
+
+    // Create a vector of port names
+    let port_list: Vec<String> = ports.iter().map(|p| p.port_name.clone()).collect();
+
+    // Print the list of ports with numbers
+    for (port_count, port) in port_list.iter().enumerate() {
+        println!("{}) {}", port_count + 1, port);
+    }
+
+    print!("Select port: ");
+    io::stdout().flush().unwrap();
+
+    let mut user_input = String::new();
+    io::stdin()
+        .read_line(&mut user_input)
+        .expect("Failed to read line");
+
+    // Parse the user's input into a usize (index)
+    let selected_port: usize = user_input.trim().parse().expect("Not a valid option");
+    let port_path: String;
+
+    // Check if the selected_port is a valid index
+    if selected_port > port_list.len() {
+        panic!("Invalid port selection.");
+    } else {
+        // Get the selected port's path
+        port_path = String::from(&port_list[selected_port - 1]);
+        println!("Selected port: {}", port_path);
+    }
+
+    println!();
+    print!("**********************************************\n");
+    print!("**                                          **\n");
+    print!("**    Welcome to Frank's Serial Monitor!    **\n");
+    print!("**                                          **\n");
+    print!("**********************************************\n");
+    println!();
+    io::stdout().flush().unwrap();
+
+
+    let mut port = serialport::new(&port_path, config.baud)
         .open()
         .expect("Failed to open serial port");
-
     // Clone the port
     let mut clone = port.try_clone().expect("Failed to clone");
 
@@ -125,7 +159,6 @@ fn main() {
 
     loop {
         if thread2_terminate_flag.load(Ordering::Relaxed) {
-            print!("thread killed\r\n");
             break; // Exit the loop when the termination flag is set
         }
         match state {
@@ -154,7 +187,7 @@ fn main() {
             }
             State::Body => {
                 for types in &config.body {
-                    for count in 1..=types.count {
+                    for _count in 1..=types.count {
                         // Chill
                         thread::sleep(Duration::from_millis(10));
 
@@ -209,15 +242,14 @@ fn main() {
                             print!("\x1b[1A");
                             // Delete the current line
                             print!("\x1b[K");
-                            print!("End: {}\n\r", byte_buffer[0]);
-                            print!("{}\r\n", thread2.lock().unwrap());
-                            io::stdout().flush().unwrap();
                             if byte_buffer[0] == config.end as u8 {
+                                print!("End: {}\n\r", byte_buffer[0]);
+                                print!("{}\r\n", thread2.lock().unwrap());
                                 state = State::Start;
+                            } else {
+                                print!("End not found!\r\n\r\n");
                             }
-                            else {
-                                print!("End not found!\r\n");
-                            }
+                            io::stdout().flush().unwrap();
                         }
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
