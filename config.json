@@ -1,4 +1,5 @@
 {
+    "baud": 9600,
     "start": "A",
     "body": [
         {"data_type": "float", "count": 2},
