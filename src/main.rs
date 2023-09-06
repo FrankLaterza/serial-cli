@@ -1,3 +1,4 @@
+use crossterm::event::KeyEventState;
 use crossterm::ExecutableCommand;
 use crossterm::{
     event::{self, KeyCode, KeyEvent, KeyEventKind},
@@ -7,10 +8,10 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use std::{io, thread};
-// use std::sync::{Arc, AtomicBool};
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -25,6 +26,12 @@ struct Types {
     count: u32,
 }
 
+enum State {
+    Start,
+    Body,
+    End,
+}
+
 fn main() {
     let mut config_file = File::open("config.json").expect("Unable to read file");
 
@@ -36,6 +43,12 @@ fn main() {
     println!("Config loaded");
 
     // kill thread
+    // Create an Arc<AtomicBool> to signal termination
+    let terminate_flag = Arc::new(AtomicBool::new(false));
+
+    // Clone the Arc for the threads
+    let thread1_terminate_flag = Arc::clone(&terminate_flag);
+    let thread2_terminate_flag = Arc::clone(&terminate_flag);
 
     let mut input = String::new();
 
@@ -54,72 +67,173 @@ fn main() {
     let mut clone = port.try_clone().expect("Failed to clone");
 
     print!("\r\n");
-    thread::spawn(move || loop {
-        terminal::enable_raw_mode().unwrap();
+    thread::spawn(move || {
+        while !thread1_terminate_flag.load(Ordering::Relaxed) {
+            terminal::enable_raw_mode().unwrap();
 
-        if event::poll(Duration::from_millis(1)).unwrap() {
-            if let crossterm::event::Event::Key(event) = event::read().unwrap() {
-                match event.code {
-                    KeyCode::Char(c) => {
-                        // Move the cursor up one line
-                        print!("\x1b[1A");
-                        // Delete the current line
-                        print!("\x1b[K");
-                        thread1.lock().unwrap().push(c);
-                        print!("{}\r\n", thread1.lock().unwrap());
-                        // drop(thread1);
-                        io::stdout().flush().unwrap();
+            if event::poll(Duration::from_millis(1)).unwrap() {
+                if let crossterm::event::Event::Key(event) = event::read().unwrap() {
+                    match event.code {
+                        KeyCode::Char(c) => {
+                            // Move the cursor up one line
+                            print!("\x1b[1A");
+                            // Delete the current line
+                            print!("\x1b[K");
+                            thread1.lock().unwrap().push(c);
+                            print!("{}\r\n", thread1.lock().unwrap());
+                            // drop(thread1);
+                            io::stdout().flush().unwrap();
+                        }
+                        KeyCode::Backspace => {
+                            // Print a new line when Enter is pressed
+                            // print!("\r\n");
+                            print!("\x1b[1A");
+                            // Delete the current line
+                            print!("\x1b[K");
+                            let mut string_gaurd = thread1.lock().unwrap();
+                            string_gaurd.pop();
+                            print!("{}\r\n", string_gaurd);
+                            io::stdout().flush().unwrap();
+                        }
+                        KeyCode::Enter => {
+                            // Print a new line when Enter is pressed
+                            // print!("\r\n");
+                            clone
+                                .write_all(thread1.lock().unwrap().as_bytes())
+                                .expect("Failed to write to serial port");
+                            thread1.lock().unwrap().clear();
+                            io::stdout().flush().unwrap();
+                        }
+                        KeyCode::Esc => {
+                            thread1_terminate_flag.store(true, Ordering::Relaxed);
+                            break;
+                        }
+
+                        _ => {}
                     }
-                    KeyCode::Backspace => {
-                        // Print a new line when Enter is pressed
-                        // print!("\r\n");
-                        print!("\x1b[1A");
-                        // Delete the current line
-                        print!("\x1b[K");
-                        let mut string_gaurd = thread1.lock().unwrap();
-                        string_gaurd.pop();
-                        print!("{}\r\n", string_gaurd);
-                        io::stdout().flush().unwrap();
-                        
-                    }
-                    KeyCode::Enter => {
-                        // Print a new line when Enter is pressed
-                        // print!("\r\n");
-                        clone.write_all(thread1.lock().unwrap().as_bytes())
-                        .expect("Failed to write to serial port");
-                        thread1.lock().unwrap().clear();
-                        io::stdout().flush().unwrap();
-                        
-                    }
-                    KeyCode::Esc => {
-                        // Exit the loop if the Esc key is pressed
-                        break;
-                    }
-                    
-                    _ => {}
                 }
             }
         }
     });
 
     // Read the four bytes back from the cloned port
-    let mut buffer: [u8; 1] = [0; 1];
-    loop {
-        match port.read(&mut buffer) {
-            Ok(bytes) => {
-                if bytes == 1 {
-                    // Move the cursor up one line
-                    print!("\x1b[1A");
-                    // Delete the current line
-                    print!("\x1b[K");
-                    print!("Received: {:?}\n\r", buffer);
-                    print!("{}\r\n", thread2.lock().unwrap());
-                    io::stdout().flush().unwrap();
+    let mut float_buffer = [0; 4];
+    let mut int_buffer = [0; 4];
+    let mut byte_buffer = [0; 1];
 
+    let mut state: State = State::Start;
+
+    loop {
+        if thread2_terminate_flag.load(Ordering::Relaxed) {
+            print!("thread killed\r\n");
+            break; // Exit the loop when the termination flag is set
+        }
+        match state {
+            State::Start => {
+                match port.read(&mut byte_buffer) {
+                    Ok(bytes) => {
+                        if bytes == 1 {
+                            // Move the cursor up one line
+                            print!("\x1b[1A");
+                            // Delete the current line
+                            print!("\x1b[K");
+                            print!("Start: {}\n\r", byte_buffer[0]);
+                            print!("{}\r\n", thread2.lock().unwrap());
+                            io::stdout().flush().unwrap();
+                            if byte_buffer[0] == config.start as u8 {
+                                state = State::Body;
+                            }
+                        }
+                    }
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        break; // Exit the loop on error
+                    }
                 }
             }
-            Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
-            Err(e) => eprintln!("{:?}", e),
+            State::Body => {
+                for types in &config.body {
+                    for count in 1..=types.count {
+                        // Chill
+                        thread::sleep(Duration::from_millis(10));
+
+                        match types.data_type.as_str() {
+                            "float" => {
+                                port.read_exact(&mut float_buffer).unwrap();
+                                float_buffer.reverse();
+                                // Move the cursor up one line
+                                print!("\x1b[1A");
+                                // Delete the current lineA
+                                print!("\x1b[K");
+                                let float_value = f32::from_ne_bytes(float_buffer);
+                                print!("Float: {}\n\r", float_value);
+                                print!("{}\r\n", thread2.lock().unwrap());
+                                io::stdout().flush().unwrap();
+                            }
+                            "int" => {
+                                port.read_exact(&mut int_buffer).unwrap();
+                                int_buffer.reverse();
+                                // Move the cursor up one line
+                                print!("\x1b[1A");
+                                // Delete the current lineA
+                                print!("\x1b[K");
+                                let int_value = i32::from_ne_bytes(int_buffer);
+                                print!("Int: {}\r\n", int_value);
+                                print!("{}\r\n", thread2.lock().unwrap());
+                                io::stdout().flush().unwrap();
+                            }
+                            "byte" => {
+                                port.read(&mut byte_buffer).unwrap();
+                                // Move the cursor up one line
+                                print!("\x1b[1A");
+                                // Delete the current lineA
+                                print!("\x1b[K");
+                                print!("Byte: {}\n\r", byte_buffer[0]);
+                                print!("{}\r\n", thread2.lock().unwrap());
+                                io::stdout().flush().unwrap();
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                // loop finshed check end
+                state = State::End;
+            }
+
+            State::End => {
+                match port.read(&mut byte_buffer) {
+                    Ok(bytes) => {
+                        if bytes == 1 {
+                            // Move the cursor up one line
+                            print!("\x1b[1A");
+                            // Delete the current line
+                            print!("\x1b[K");
+                            print!("End: {}\n\r", byte_buffer[0]);
+                            print!("{}\r\n", thread2.lock().unwrap());
+                            io::stdout().flush().unwrap();
+                            if byte_buffer[0] == config.end as u8 {
+                                state = State::Start;
+                            }
+                            else {
+                                print!("End not found!\r\n");
+                            }
+                        }
+                    }
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        break; // Exit the loop on error
+                    }
+                }
+            }
         }
+        // Chill out
+        thread::sleep(Duration::from_millis(10));
     }
+
+    // Put terminal back
+    terminal::disable_raw_mode().unwrap();
+    println!("Exiting Program");
+    return;
 }
