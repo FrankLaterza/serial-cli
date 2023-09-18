@@ -1,15 +1,12 @@
-use crossterm::{
-    event::{self, KeyCode},
-    terminal::{self},
-};
-use serde::{Deserialize, Serialize};
+use crossterm::{ event::{ self, KeyCode, KeyEventKind }, terminal::{ self } };
+use serde::{ Deserialize, Serialize };
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{ AtomicBool, Ordering };
+use std::sync::{ Arc, Mutex };
 use std::time::Duration;
-use std::{io, thread};
+use std::{ io, thread };
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -56,7 +53,10 @@ fn main() {
     let ports = serialport::available_ports().expect("No ports found!");
 
     // Create a vector of port names
-    let port_list: Vec<String> = ports.iter().map(|p| p.port_name.clone()).collect();
+    let port_list: Vec<String> = ports
+        .iter()
+        .map(|p| p.port_name.clone())
+        .collect();
 
     // Print the list of ports with numbers
     for (port_count, port) in port_list.iter().enumerate() {
@@ -67,9 +67,7 @@ fn main() {
     io::stdout().flush().unwrap();
 
     let mut user_input = String::new();
-    io::stdin()
-        .read_line(&mut user_input)
-        .expect("Failed to read line");
+    io::stdin().read_line(&mut user_input).expect("Failed to read line");
 
     // Parse the user's input into a usize (index)
     let selected_port: usize = user_input.trim().parse().expect("Not a valid option");
@@ -93,8 +91,8 @@ fn main() {
     println!();
     io::stdout().flush().unwrap();
 
-
-    let mut port = serialport::new(&port_path, config.baud)
+    let mut port = serialport
+        ::new(&port_path, config.baud)
         .open()
         .expect("Failed to open serial port");
     // Clone the port
@@ -107,6 +105,10 @@ fn main() {
 
             if event::poll(Duration::from_millis(1)).unwrap() {
                 if let crossterm::event::Event::Key(event) = event::read().unwrap() {
+                    // if its not a press then don't care
+                    if event.kind != KeyEventKind::Press {
+                        continue;
+                    }
                     match event.code {
                         KeyCode::Char(c) => {
                             // Move the cursor up one line
@@ -132,14 +134,22 @@ fn main() {
                         KeyCode::Enter => {
                             // Print a new line when Enter is pressed
                             // print!("\r\n");
+                            print!("writing \r\n");
                             clone
                                 .write_all(thread1.lock().unwrap().as_bytes())
                                 .expect("Failed to write to serial port");
+                            print!("written \r\n");
                             thread1.lock().unwrap().clear();
                             io::stdout().flush().unwrap();
                         }
                         KeyCode::Esc => {
+                            // thread flag not read fast enough
                             thread1_terminate_flag.store(true, Ordering::Relaxed);
+                            // wrap up
+                            terminal::disable_raw_mode().unwrap();
+                            println!("Exiting Program");
+                            // kills all thread todo fix
+                            std::process::exit(0);
                             break;
                         }
 
@@ -153,7 +163,7 @@ fn main() {
     // Read the four bytes back from the cloned port
     let mut float_buffer = [0; 4];
     let mut int_buffer = [0; 4];
-    let mut byte_buffer = [0; 1];
+    let mut byte_buffer: Vec<u8> = vec![0; 1];
 
     let mut state: State = State::Start;
 
@@ -163,9 +173,9 @@ fn main() {
         }
         match state {
             State::Start => {
-                match port.read(&mut byte_buffer) {
-                    Ok(bytes) => {
-                        if bytes == 1 {
+                match port.read(&mut byte_buffer.as_mut_slice()) {
+                    Ok(n) => {
+                        if n >= 1 {
                             // Move the cursor up one line
                             print!("\x1b[1A");
                             // Delete the current line
@@ -173,27 +183,36 @@ fn main() {
                             print!("Start: {}\n\r", byte_buffer[0]);
                             print!("{}\r\n", thread2.lock().unwrap());
                             io::stdout().flush().unwrap();
-                            if byte_buffer[0] == config.start as u8 {
+                            if byte_buffer[0] == (config.start as u8) {
                                 state = State::Body;
                             }
                         }
                     }
-                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
                     Err(e) => {
-                        eprintln!("{:?}", e);
-                        break; // Exit the loop on error
+                        eprint!("{}", e);
                     }
                 }
             }
             State::Body => {
                 for types in &config.body {
-                    for _count in 1..=types.count {
-                        // Chill
-                        thread::sleep(Duration::from_millis(10));
-
+                    let mut byte_found_count = 0;
+                    while byte_found_count < types.count {
                         match types.data_type.as_str() {
                             "float" => {
-                                port.read_exact(&mut float_buffer).unwrap();
+                                let mut float_byte_count = 0;
+                                while float_byte_count < 4 {
+                                    match port.read(&mut byte_buffer) {
+                                        Ok(n) => {
+                                            if n == 1 {
+                                                // pack the float
+                                                float_buffer[float_byte_count] = byte_buffer[0];
+                                                float_byte_count += 1;
+                                            }
+                                        }
+                                        Err(_) => {}
+                                    }
+                                }
+                                byte_found_count += 1;
                                 float_buffer.reverse();
                                 // Move the cursor up one line
                                 print!("\x1b[1A");
@@ -205,26 +224,48 @@ fn main() {
                                 io::stdout().flush().unwrap();
                             }
                             "int" => {
-                                port.read_exact(&mut int_buffer).unwrap();
+                                let mut int_byte_count = 0;
+                                while int_byte_count < 4 {
+                                    match port.read(&mut byte_buffer) {
+                                        Ok(n) => {
+                                            if n == 1 {
+                                                // pack the int
+                                                int_buffer[int_byte_count] = byte_buffer[0];
+                                                int_byte_count += 1;
+                                            }
+                                        }
+                                        Err(_) => {}
+                                    }
+                                }
+                                byte_found_count += 1;
                                 int_buffer.reverse();
                                 // Move the cursor up one line
                                 print!("\x1b[1A");
                                 // Delete the current lineA
                                 print!("\x1b[K");
                                 let int_value = i32::from_ne_bytes(int_buffer);
-                                print!("Int: {}\r\n", int_value);
+                                print!("Int: {}\n\r", int_value);
                                 print!("{}\r\n", thread2.lock().unwrap());
                                 io::stdout().flush().unwrap();
+                                // Convert Float into
                             }
                             "byte" => {
-                                port.read(&mut byte_buffer).unwrap();
-                                // Move the cursor up one line
-                                print!("\x1b[1A");
-                                // Delete the current lineA
-                                print!("\x1b[K");
-                                print!("Byte: {}\n\r", byte_buffer[0]);
-                                print!("{}\r\n", thread2.lock().unwrap());
-                                io::stdout().flush().unwrap();
+                                match port.read(&mut byte_buffer.as_mut_slice()) {
+                                    Ok(n) => {
+                                        if n == 1 {
+                                            byte_found_count += 1;
+                                            port.read(&mut byte_buffer).unwrap();
+                                            // Move the cursor up one line
+                                            print!("\x1b[1A");
+                                            // Delete the current lineA
+                                            print!("\x1b[K");
+                                            print!("Byte: {}\n\r", byte_buffer[0]);
+                                            print!("{}\r\n", thread2.lock().unwrap());
+                                            io::stdout().flush().unwrap();
+                                        }
+                                    }
+                                    Err(_) => {}
+                                }
                             }
                             _ => {}
                         }
@@ -242,7 +283,7 @@ fn main() {
                             print!("\x1b[1A");
                             // Delete the current line
                             print!("\x1b[K");
-                            if byte_buffer[0] == config.end as u8 {
+                            if byte_buffer[0] == (config.end as u8) {
                                 print!("End: {}\n\r", byte_buffer[0]);
                                 print!("{}\r\n", thread2.lock().unwrap());
                                 state = State::Start;

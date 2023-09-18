@@ -473,12 +473,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pin-project-lite"
-version = "0.2.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8afb450f006bf6385ca15ef45d71d2288452bc3683ce2e2cacc0d18e4be60b58"
-
-[[package]]
 name = "pkg-config"
 version = "0.3.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -713,14 +707,12 @@ dependencies = [
  "serde",
  "serde_json",
  "serialport",
- "tokio",
 ]
 
 [[package]]
 name = "serialport"
-version = "4.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c32634e2bd4311420caa504404a55fad2131292c485c97014cbed89a5899885f"
+version = "4.2.1-alpha.0"
+source = "git+https://github.com/LukaOber/serialport-rs#e649b97668e1eac7131f5770f3fa32e8d223da3e"
 dependencies = [
  "CoreFoundation-sys",
  "IOKit-sys",
@@ -730,7 +722,6 @@ dependencies = [
  "mach2",
  "nix",
  "regex",
- "scopeguard",
  "winapi",
 ]
 
@@ -808,16 +799,6 @@ dependencies = [
  "quote",
  "syn 1.0.109",
  "unicode-xid",
-]
-
-[[package]]
-name = "tokio"
-version = "1.32.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17ed6077ed6cd6c74735e21f37eb16dc3935f96878b1fe961074089cc80893f9"
-dependencies = [
- "backtrace",
- "pin-project-lite",
 ]
 
 [[package]]
