@@ -1,15 +1,12 @@
-use crossterm::{
-    event::{self, KeyCode},
-    terminal::{self},
-};
-use serde::{Deserialize, Serialize};
+use crossterm::{ event::{ self, Event, KeyCode, KeyEvent, KeyEventKind }, terminal::{ self } };
+use serde::{ Deserialize, Serialize };
 use std::fs::File;
 use std::io::Read;
 use std::io::Write;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{ AtomicBool, Ordering };
+use std::sync::{ Arc, Mutex };
 use std::time::Duration;
-use std::{io, thread};
+use std::{ io, thread };
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -56,7 +53,10 @@ fn main() {
     let ports = serialport::available_ports().expect("No ports found!");
 
     // Create a vector of port names
-    let port_list: Vec<String> = ports.iter().map(|p| p.port_name.clone()).collect();
+    let port_list: Vec<String> = ports
+        .iter()
+        .map(|p| p.port_name.clone())
+        .collect();
 
     // Print the list of ports with numbers
     for (port_count, port) in port_list.iter().enumerate() {
@@ -67,9 +67,7 @@ fn main() {
     io::stdout().flush().unwrap();
 
     let mut user_input = String::new();
-    io::stdin()
-        .read_line(&mut user_input)
-        .expect("Failed to read line");
+    io::stdin().read_line(&mut user_input).expect("Failed to read line");
 
     // Parse the user's input into a usize (index)
     let selected_port: usize = user_input.trim().parse().expect("Not a valid option");
@@ -93,8 +91,8 @@ fn main() {
     println!();
     io::stdout().flush().unwrap();
 
-
-    let mut port = serialport::new(&port_path, config.baud)
+    let mut port = serialport
+        ::new(&port_path, config.baud)
         .open()
         .expect("Failed to open serial port");
     // Clone the port
@@ -104,10 +102,14 @@ fn main() {
     thread::spawn(move || {
         while !thread1_terminate_flag.load(Ordering::Relaxed) {
             terminal::enable_raw_mode().unwrap();
-
-            if event::poll(Duration::from_millis(1)).unwrap() {
-                if let crossterm::event::Event::Key(event) = event::read().unwrap() {
-                    match event.code {
+            // Don't ask me about this syntax...
+            if event::poll(Duration::from_millis(20)).unwrap() {
+                if
+                    let Event::Key(KeyEvent { code, kind: KeyEventKind::Press, .. }) = event
+                        ::read()
+                        .unwrap()
+                {
+                    match code {
                         KeyCode::Char(c) => {
                             // Move the cursor up one line
                             print!("\x1b[1A");
@@ -115,8 +117,8 @@ fn main() {
                             print!("\x1b[K");
                             thread1.lock().unwrap().push(c);
                             print!("{}\r\n", thread1.lock().unwrap());
-                            // drop(thread1);
                             io::stdout().flush().unwrap();
+                            thread::sleep(Duration::from_millis(10));
                         }
                         KeyCode::Backspace => {
                             // Print a new line when Enter is pressed
@@ -130,12 +132,14 @@ fn main() {
                             io::stdout().flush().unwrap();
                         }
                         KeyCode::Enter => {
-                            // Print a new line when Enter is pressed
-                            // print!("\r\n");
+                            println!("sending serial to clone");
+                            let buf: u8 = 100;
                             clone
-                                .write_all(thread1.lock().unwrap().as_bytes())
+                                .write(&[buf])
                                 .expect("Failed to write to serial port");
-                            thread1.lock().unwrap().clear();
+                            println!("sent serial to clone");
+                            // thread1.lock().unwrap().clear();
+                            println!("clearing locked thread");
                             io::stdout().flush().unwrap();
                         }
                         KeyCode::Esc => {
@@ -148,6 +152,7 @@ fn main() {
                 }
             }
         }
+        println!("Thread 1 terminated");
     });
 
     // Read the four bytes back from the cloned port
@@ -159,6 +164,7 @@ fn main() {
 
     loop {
         if thread2_terminate_flag.load(Ordering::Relaxed) {
+            println!("Terminating thread 2");
             break; // Exit the loop when the termination flag is set
         }
         match state {
@@ -173,7 +179,7 @@ fn main() {
                             print!("Start: {}\n\r", byte_buffer[0]);
                             print!("{}\r\n", thread2.lock().unwrap());
                             io::stdout().flush().unwrap();
-                            if byte_buffer[0] == config.start as u8 {
+                            if byte_buffer[0] == (config.start as u8) {
                                 state = State::Body;
                             }
                         }
@@ -242,7 +248,7 @@ fn main() {
                             print!("\x1b[1A");
                             // Delete the current line
                             print!("\x1b[K");
-                            if byte_buffer[0] == config.end as u8 {
+                            if byte_buffer[0] == (config.end as u8) {
                                 print!("End: {}\n\r", byte_buffer[0]);
                                 print!("{}\r\n", thread2.lock().unwrap());
                                 state = State::Start;
@@ -261,7 +267,7 @@ fn main() {
             }
         }
         // Chill out
-        thread::sleep(Duration::from_millis(10));
+        thread::sleep(Duration::from_millis(100));
     }
 
     // Put terminal back
