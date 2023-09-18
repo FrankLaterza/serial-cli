@@ -1,0 +1,10 @@
+{
+    "baud": 9600,
+    "start": "A",
+    "body": [
+        {"data_type": "float", "count": 2},
+        {"data_type": "int", "count": 1},
+        {"data_type": "byte", "count": 4}
+    ],
+    "end": "Z"
+}
