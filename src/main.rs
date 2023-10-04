@@ -98,7 +98,8 @@ fn main() {
     // Clone the port
     let mut clone = port.try_clone().expect("Failed to clone");
 
-    print!("\r\n");
+    print!(">");
+    io::stdout().flush().unwrap();
     thread::spawn(move || {
         while !thread1_terminate_flag.load(Ordering::Relaxed) {
             terminal::enable_raw_mode().unwrap();
@@ -112,24 +113,23 @@ fn main() {
                     match event.code {
                         KeyCode::Char(c) => {
                             // Move the cursor up one line
-                            print!("\x1b[1A");
-                            // Delete the current line
-                            print!("\x1b[K");
+                            // print!("\x1b[1A");
+                            // // Delete the current line
+                            // print!("\x1b[K");
                             thread1.lock().unwrap().push(c);
-                            print!("{}\r\n", thread1.lock().unwrap());
+                            print!("{}", c);
                             // drop(thread1);
                             io::stdout().flush().unwrap();
                         }
                         KeyCode::Backspace => {
-                            // Print a new line when Enter is pressed
-                            // print!("\r\n");
-                            print!("\x1b[1A");
-                            // Delete the current line
-                            print!("\x1b[K");
-                            let mut string_gaurd = thread1.lock().unwrap();
-                            string_gaurd.pop();
-                            print!("{}\r\n", string_gaurd);
-                            io::stdout().flush().unwrap();
+                            // Handle backspace: Remove the last character from the string and update the output
+                            let mut string_guard = thread1.lock().unwrap();
+                            if !string_guard.is_empty() {
+                                string_guard.pop();
+                                // Move the cursor left and clear to the end of the line
+                                print!("\x08 \x08");
+                                io::stdout().flush().unwrap();
+                            }
                         }
                         KeyCode::Enter => {
                             // Print a new line when Enter is pressed
@@ -145,11 +145,6 @@ fn main() {
                         KeyCode::Esc => {
                             // thread flag not read fast enough
                             thread1_terminate_flag.store(true, Ordering::Relaxed);
-                            // wrap up
-                            terminal::disable_raw_mode().unwrap();
-                            println!("Exiting Program");
-                            // kills all thread todo fix
-                            std::process::exit(0);
                             break;
                         }
 
@@ -166,7 +161,7 @@ fn main() {
     let mut byte_buffer: Vec<u8> = vec![0; 1];
 
     let mut state: State = State::Start;
-
+    
     loop {
         if thread2_terminate_flag.load(Ordering::Relaxed) {
             break; // Exit the loop when the termination flag is set
@@ -176,12 +171,9 @@ fn main() {
                 match port.read(&mut byte_buffer.as_mut_slice()) {
                     Ok(n) => {
                         if n >= 1 {
-                            // Move the cursor up one line
-                            print!("\x1b[1A");
-                            // Delete the current line
-                            print!("\x1b[K");
-                            print!("Start: {}\n\r", byte_buffer[0]);
-                            print!("{}\r\n", thread2.lock().unwrap());
+                            print!("\r\x1B[K");
+                            print!("Start: {}\r\n", byte_buffer[0]);
+                            print!(">{}", thread2.lock().unwrap());
                             io::stdout().flush().unwrap();
                             if byte_buffer[0] == (config.start as u8) {
                                 state = State::Body;
@@ -214,13 +206,10 @@ fn main() {
                                 }
                                 byte_found_count += 1;
                                 float_buffer.reverse();
-                                // Move the cursor up one line
-                                print!("\x1b[1A");
-                                // Delete the current lineA
-                                print!("\x1b[K");
                                 let float_value = f32::from_ne_bytes(float_buffer);
-                                print!("Float: {}\n\r", float_value);
-                                print!("{}\r\n", thread2.lock().unwrap());
+                                print!("\r\x1B[K");
+                                print!("Float: {}\r\n", float_value);
+                                print!(">{}", thread2.lock().unwrap());
                                 io::stdout().flush().unwrap();
                             }
                             "int" => {
@@ -239,13 +228,10 @@ fn main() {
                                 }
                                 byte_found_count += 1;
                                 int_buffer.reverse();
-                                // Move the cursor up one line
-                                print!("\x1b[1A");
-                                // Delete the current lineA
-                                print!("\x1b[K");
                                 let int_value = i32::from_ne_bytes(int_buffer);
+                                print!("\r\x1B[K");
                                 print!("Int: {}\n\r", int_value);
-                                print!("{}\r\n", thread2.lock().unwrap());
+                                print!(">{}", thread2.lock().unwrap());
                                 io::stdout().flush().unwrap();
                                 // Convert Float into
                             }
@@ -254,13 +240,10 @@ fn main() {
                                     Ok(n) => {
                                         if n == 1 {
                                             byte_found_count += 1;
-                                            port.read(&mut byte_buffer).unwrap();
+                                            print!("\r\x1B[K");
                                             // Move the cursor up one line
-                                            print!("\x1b[1A");
-                                            // Delete the current lineA
-                                            print!("\x1b[K");
                                             print!("Byte: {}\n\r", byte_buffer[0]);
-                                            print!("{}\r\n", thread2.lock().unwrap());
+                                            print!(">{}", thread2.lock().unwrap());
                                             io::stdout().flush().unwrap();
                                         }
                                     }
@@ -279,16 +262,15 @@ fn main() {
                 match port.read(&mut byte_buffer) {
                     Ok(bytes) => {
                         if bytes == 1 {
-                            // Move the cursor up one line
-                            print!("\x1b[1A");
-                            // Delete the current line
-                            print!("\x1b[K");
                             if byte_buffer[0] == (config.end as u8) {
-                                print!("End: {}\n\r", byte_buffer[0]);
-                                print!("{}\r\n", thread2.lock().unwrap());
+                                print!("\r\x1B[K");
+                                print!("End: {}\r\n", byte_buffer[0]);
+                                print!(">{}", thread2.lock().unwrap());
                                 state = State::Start;
                             } else {
-                                print!("End not found!\r\n\r\n");
+                                print!("\r\x1B[K");
+                                print!("End not found!\r\n");
+                                print!(">{}", thread2.lock().unwrap());
                             }
                             io::stdout().flush().unwrap();
                         }
