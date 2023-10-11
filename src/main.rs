@@ -85,9 +85,21 @@ fn main() {
     println!();
     print!("**********************************************\n");
     print!("**                                          **\n");
-    print!("**    Welcome to Frank's Serial Monitor!    **\n");
+    print!("**  Welcome to ETA SPACE's Binary Decoder!  **\n");
     print!("**                                          **\n");
     print!("**********************************************\n");
+
+    // printing commands an operation
+    print!("Exit the program with ESC\n");
+    print!("\n");
+
+    // print loading config
+    print!("Loading Config:\n");
+    print!("{}", config_data);
+
+    print!("********************START*********************\n");
+
+    print!("");
     println!();
     io::stdout().flush().unwrap();
 
@@ -161,7 +173,7 @@ fn main() {
     let mut byte_buffer: Vec<u8> = vec![0; 1];
 
     let mut state: State = State::Start;
-    
+
     loop {
         if thread2_terminate_flag.load(Ordering::Relaxed) {
             break; // Exit the loop when the termination flag is set
@@ -182,6 +194,9 @@ fn main() {
                     }
                     Err(e) => {
                         eprint!("{}", e);
+                        // thread flag not read fast enough (kill)
+                        thread2_terminate_flag.store(true, Ordering::Relaxed);
+                        break;
                     }
                 }
             }
@@ -201,11 +216,15 @@ fn main() {
                                                 float_byte_count += 1;
                                             }
                                         }
-                                        Err(_) => {}
+                                        Err(_) => {
+                                            // thread flag not read fast enough (kill)
+                                            thread2_terminate_flag.store(true, Ordering::Relaxed);
+                                            break;
+                                        }
                                     }
                                 }
                                 byte_found_count += 1;
-                                float_buffer.reverse();
+                                // float_buffer.reverse();
                                 let float_value = f32::from_ne_bytes(float_buffer);
                                 print!("\r\x1B[K");
                                 print!("Float: {}\r\n", float_value);
@@ -223,7 +242,11 @@ fn main() {
                                                 int_byte_count += 1;
                                             }
                                         }
-                                        Err(_) => {}
+                                        Err(_) => {
+                                            // thread flag not read fast enough (kill)
+                                            thread2_terminate_flag.store(true, Ordering::Relaxed);
+                                            break;
+                                        }
                                     }
                                 }
                                 byte_found_count += 1;
@@ -247,7 +270,11 @@ fn main() {
                                             io::stdout().flush().unwrap();
                                         }
                                     }
-                                    Err(_) => {}
+                                    Err(_) => {
+                                        // thread flag not read fast enough (kill)
+                                        thread2_terminate_flag.store(true, Ordering::Relaxed);
+                                        break;
+                                    }
                                 }
                             }
                             _ => {}
@@ -269,15 +296,21 @@ fn main() {
                                 state = State::Start;
                             } else {
                                 print!("\r\x1B[K");
-                                print!("End not found!\r\n");
+                                print!("End not found: {}\r\n", byte_buffer[0]);
                                 print!(">{}", thread2.lock().unwrap());
                             }
                             io::stdout().flush().unwrap();
                         }
                     }
-                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => (),
+                    Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
+                        // thread flag not read fast enough (kill)
+                        thread2_terminate_flag.store(true, Ordering::Relaxed);
+                        break;
+                    }
                     Err(e) => {
                         eprintln!("{:?}", e);
+                        // thread flag not read fast enough (kill)
+                        thread2_terminate_flag.store(true, Ordering::Relaxed);
                         break; // Exit the loop on error
                     }
                 }

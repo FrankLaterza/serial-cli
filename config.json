@@ -1,11 +1,11 @@
 {
     "baud": 9600,
-    "start": "A",
+    "start": "ª",
     "body": [
-        {"data_type": "float", "count": 2},
-        {"data_type": "int", "count": 1},
-        {"data_type": "byte", "count": 4}
+        {"data_type": "float", "count": 19},
+        {"data_type": "byte", "count": 1},
+        {"data_type": "float", "count": 2}
     ],
-    "end": "Z"
+    "end": "U"
 }
 
