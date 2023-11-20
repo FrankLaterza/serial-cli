@@ -1,11 +1,9 @@
 {
     "baud": 9600,
-    "path": "/home/fank/Documents/tauri/log",
-    "start": "A",
+    "start": "ª",
     "body": [
         {"data_type": "float", "count": 3}
     ],
     "end": "U",
     "path": "C:/Users/frank/Documents/log"
 }
- 
