@@ -8,12 +8,14 @@ use std::sync::{ Arc, Mutex };
 use std::time::Duration;
 use std::{ io, thread };
 use std::time::SystemTime;
+use std::path::PathBuf;
 use chrono::{DateTime, Local};
 use chrono::Utc;
 
 #[derive(Serialize, Deserialize)]
 struct Config {
     baud: u32,
+    path: String,
     start: char,
     body: Vec<Types>,
     end: char,
@@ -95,6 +97,21 @@ fn main() {
         port_path = String::from(&port_list[selected_port - 1]);
         println!("Selected port: {}", port_path);
     }
+    
+    let path =  PathBuf::from(config.path);
+    // get the current system time
+    let system_time = SystemTime::now();
+    // convert the system time to a DateTime object in the local timezone
+    let datetime: DateTime<Local> = system_time.into();
+    // format the date and time as a string
+    let formatted_date_time = datetime.format("%Y-%m-%d_%H.%M.%S").to_string();
+    // format
+    let file_name = format!("SerialWizard_{}.txt", formatted_date_time);
+    // create file name
+    let file_path = path.join(file_name);
+    // create file
+    let file = File::create(&file_path).expect("Error could not create file");
+
 
     let mut recording_enabled = false;
     let mut file: Option<Result<File, io::Error>> = None;
@@ -145,7 +162,6 @@ fn main() {
     print!("Loading Config:\n");
     print!("{}", config_data);
 
-
     print!("********************START*********************\n");
     print!("");
     println!();
@@ -153,6 +169,7 @@ fn main() {
 
     let mut port = serialport
         ::new(&port_path, config.baud)
+        .timeout(Duration::from_millis(10000))
         .open()
         .expect("Failed to open serial port");
     // Clone the port
@@ -243,7 +260,7 @@ fn main() {
                         }
                     }
                     Err(e) => {
-                        eprint!("{}", e);
+                        eprintln!("Error from start: {}", e);
                         // thread flag not read fast enough (kill)
                         thread2_terminate_flag.store(true, Ordering::Relaxed);
                         break;
@@ -266,7 +283,8 @@ fn main() {
                                                 float_byte_count += 1;
                                             }
                                         }
-                                        Err(_) => {
+                                        Err(e) => {
+                                            println!("Error reading float byte {}", e);
                                             // thread flag not read fast enough (kill)
                                             thread2_terminate_flag.store(true, Ordering::Relaxed);
                                             break;
@@ -294,6 +312,7 @@ fn main() {
                                             }
                                         }
                                         Err(_) => {
+                                            println!("Error reading int byte");
                                             // thread flag not read fast enough (kill)
                                             thread2_terminate_flag.store(true, Ordering::Relaxed);
                                             break;
@@ -322,6 +341,7 @@ fn main() {
                                         }
                                     }
                                     Err(_) => {
+                                        println!("Error reading byte");
                                         // thread flag not read fast enough (kill)
                                         thread2_terminate_flag.store(true, Ordering::Relaxed);
                                         break;
@@ -369,6 +389,7 @@ fn main() {
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
                         // thread flag not read fast enough (kill)
+                        eprintln!("Error reading end byte {}", e);
                         thread2_terminate_flag.store(true, Ordering::Relaxed);
                         break;
                     }
