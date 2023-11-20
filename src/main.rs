@@ -1,12 +1,15 @@
 use crossterm::{ event::{ self, KeyCode, KeyEventKind }, terminal::{ self } };
 use serde::{ Deserialize, Serialize };
-use std::fs::File;
+use std::{fs::File, path::PathBuf};
 use std::io::Read;
 use std::io::Write;
 use std::sync::atomic::{ AtomicBool, Ordering };
 use std::sync::{ Arc, Mutex };
 use std::time::Duration;
 use std::{ io, thread };
+use std::time::SystemTime;
+use chrono::{DateTime, Local};
+use chrono::Utc;
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -14,6 +17,7 @@ struct Config {
     start: char,
     body: Vec<Types>,
     end: char,
+    path: String
 }
 
 #[derive(Serialize, Deserialize)]
@@ -26,6 +30,16 @@ enum State {
     Start,
     Body,
     End,
+}
+
+// stores serial data in frame
+#[derive(Clone, serde::Serialize)]
+struct Payload {
+    body: Vec<String>
+}
+
+fn payload_to_string(payload: &Payload) -> String {
+    return payload.body.join(", ");
 }
 
 fn main() {
@@ -82,13 +96,47 @@ fn main() {
         println!("Selected port: {}", port_path);
     }
 
+    let mut recording_enabled = false;
+    let mut file: Option<Result<File, io::Error>> = None;
+    // ask record if path listed
+    if config.path != "" {
+        print!("Would you like to record data to th`e path {}? (y/n): ", config.path);
+        io::stdout().flush().unwrap();
+
+        user_input = String::new();
+        io::stdin().read_line(&mut user_input).expect("Failed to read line");
+        let answer: String = user_input.trim().parse().expect("Not a valid option");
+        // print!("{answer}");
+        if answer == "y" {
+            // toggle
+            recording_enabled = true;
+            // get the current system time
+            let system_time = SystemTime::now();
+            // convert the system time to a DateTime object in the local timezone
+            let datetime: DateTime<Local> = system_time.into();
+            // format the date and time as a string
+            let formatted_date_time = datetime.format("%Y-%m-%d_%H.%M.%S").to_string();
+            // format
+            let file_name = format!("SerialWizard_{}.txt", formatted_date_time);
+            let path: PathBuf = config.path.into();
+            // create file name
+            let file_path = path.join(file_name);
+            // set the file
+            file = Some(File::create(&file_path));
+            println!("Starting with recording");
+        }
+        else {
+            println!("Starting without recording");
+        }
+       
+    }
+
     println!();
     print!("**********************************************\n");
     print!("**                                          **\n");
     print!("**  Welcome to ETA SPACE's Binary Decoder!  **\n");
     print!("**                                          **\n");
     print!("**********************************************\n");
-
     // printing commands an operation
     print!("Exit the program with ESC\n");
     print!("\n");
@@ -97,8 +145,8 @@ fn main() {
     print!("Loading Config:\n");
     print!("{}", config_data);
 
-    print!("********************START*********************\n");
 
+    print!("********************START*********************\n");
     print!("");
     println!();
     io::stdout().flush().unwrap();
@@ -171,8 +219,10 @@ fn main() {
     let mut float_buffer = [0; 4];
     let mut int_buffer = [0; 4];
     let mut byte_buffer: Vec<u8> = vec![0; 1];
-
     let mut state: State = State::Start;
+
+    let mut payload = Payload { body: vec![] };
+    let start_time = Utc::now();
 
     loop {
         if thread2_terminate_flag.load(Ordering::Relaxed) {
@@ -230,6 +280,7 @@ fn main() {
                                 print!("Float: {}\r\n", float_value);
                                 print!(">{}", thread2.lock().unwrap());
                                 io::stdout().flush().unwrap();
+                                payload.body.push(float_value.to_string());
                             }
                             "int" => {
                                 let mut int_byte_count = 0;
@@ -256,7 +307,7 @@ fn main() {
                                 print!("Int: {}\n\r", int_value);
                                 print!(">{}", thread2.lock().unwrap());
                                 io::stdout().flush().unwrap();
-                                // Convert Float into
+                                payload.body.push(int_value.to_string());
                             }
                             "byte" => {
                                 match port.read(&mut byte_buffer.as_mut_slice()) {
@@ -275,8 +326,11 @@ fn main() {
                                         thread2_terminate_flag.store(true, Ordering::Relaxed);
                                         break;
                                     }
+                                    
                                 }
+                                payload.body.push(byte_buffer[0].to_string());
                             }
+                            
                             _ => {}
                         }
                     }
@@ -300,6 +354,17 @@ fn main() {
                                 print!(">{}", thread2.lock().unwrap());
                             }
                             io::stdout().flush().unwrap();
+                            if recording_enabled {
+                                let payload_string = payload_to_string(&payload);
+                                // println!("{}", payload_string);
+                                // record fill
+                                let end_time = Utc::now();
+                                let duration = end_time - start_time;
+                                let formatted_payload = format!("{}, {:?}\n", payload_string, duration.num_seconds());
+                                file.as_mut().unwrap().as_mut().unwrap().write_all(formatted_payload.as_bytes()).expect("Could not write to file");
+                                // clear the payload
+                                payload = Payload { body: vec![] };
+                            }
                         }
                     }
                     Err(ref e) if e.kind() == io::ErrorKind::TimedOut => {
@@ -315,6 +380,10 @@ fn main() {
                     }
                 }
             }
+        }
+
+        if recording_enabled {
+            // save to file
         }
         // Chill out
         thread::sleep(Duration::from_millis(10));

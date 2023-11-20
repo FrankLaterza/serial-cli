@@ -2,10 +2,8 @@
     "baud": 9600,
     "start": "ª",
     "body": [
-        {"data_type": "float", "count": 19},
-        {"data_type": "byte", "count": 1},
-        {"data_type": "float", "count": 2}
+        {"data_type": "float", "count": 3}
     ],
-    "end": "U"
+    "end": "U",
+    "path": "C:/Users/frank/Documents/log"
 }
-
